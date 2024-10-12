@@ -3,6 +3,8 @@ use std::fs::OpenOptions;
 use chrono::Local;
 use std::path::PathBuf;
 use std::process::Command;
+use std::thread;
+use std::time::Duration;
 
 pub fn write_logfile(message: &str) {
     let now = Local::now();
@@ -52,6 +54,7 @@ pub fn perform( description: &str, mut check: Command, mut operation: Command ){
         Ok(output) => {
             if output.status.success() {
                 log(&format!("{} was already done, skipping.", description));
+                return
             } 
         },
         Err(e) => {
@@ -87,5 +90,23 @@ impl CommandExt for Command {
             self.get_program().to_str().unwrap_or(""),
             self.get_args().map(|s| s.to_str().unwrap_or("")).collect::<Vec<_>>().join(" ")
         )
+    }
+}
+
+
+pub fn wait(mut command: Command, sleep: u64) {
+    loop {
+        match command.output() {
+            Ok(output) => {
+                if output.status.success() {
+                    return;
+                } else {
+                    thread::sleep(Duration::from_secs(sleep));
+                }
+            },
+            Err(e) => {
+                halt(&format!("Command '{}' failed: {}", command.cmdline(), e));
+            }
+        }
     }
 }

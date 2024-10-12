@@ -1,5 +1,6 @@
 use crate::base::*;
 use std::process::Command;
+use std::fs::File;
 
 fn incus(args: &[&str]) -> Command {
     let mut cmd = Command::new("incus");
@@ -12,6 +13,28 @@ pub struct Bridge {
     // address: String
 }
 
+pub struct Instance {
+    name: String
+}
+
+pub fn create_profile(name: &str) {
+    let filename = &format!("/opt/builder/files/{}.profile", name);
+    match File::open(filename) {
+        Ok(file) => {
+            let mut op = incus(&["profile", "create", name]);
+            op.stdin(file);
+            perform(
+                &format!("Create profile {}", name),
+                incus(&["profile", "show", name]),
+                op
+            );
+        },
+        Err(e) => {
+            halt(&format!("Profile file {} could not be opened: {}", filename, e));
+        }
+    }
+}
+
 pub fn create_bridge_network(name: &str, address: &str) -> Bridge {
     perform(
         &format!("Create bridge {}", name),
@@ -21,17 +44,12 @@ pub fn create_bridge_network(name: &str, address: &str) -> Bridge {
     Bridge {name: name.to_owned()}
 }
 
-pub struct Instance {
-    name: String
-}
-
-pub fn create_debian_vm(name: &str) -> Instance {
+pub fn create_debian_vm(name: &str, profile: &str) -> Instance {
     perform(
         &format!("Create Debian VM {}", name),
         incus(&["config", "show", name]),
-        incus(&["create", "images:debian/12", name, "--vm"])
+        incus(&["create", "images:debian/12", name, "--vm", "--profile", profile])
     );
-
     Instance {name: name.to_owned()}
 }
 
@@ -39,6 +57,15 @@ pub fn attach_bridge(bridge: Bridge, vm: Instance) {
     perform(
         &format!("Attach bridge {} to {}", bridge.name, vm.name),
         incus(&["config", "device", "get", &vm.name, &bridge.name, "name"]),
-        incus(&["config", "device", "add", &vm.name, &bridge.name, "nic"])
+        incus(&["network", "attach", &bridge.name, &vm.name])
     );
+}
+
+pub fn start_vm(instance: Instance){
+    perform(
+        &format!("Start VM {}", instance.name),
+        incus(&["exec", &instance.name, "ls"]),
+        incus(&["start", &instance.name]),
+    );
+    wait(incus(&["exec", &instance.name, "ls"]), 1);
 }
