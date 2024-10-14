@@ -1,6 +1,8 @@
 use crate::base::*;
+use std::path::Path;
 use std::process::Command;
 use std::fs::File;
+
 
 fn incus(args: &[&str]) -> Command {
     let mut cmd = Command::new("incus");
@@ -53,7 +55,7 @@ pub fn create_debian_vm(name: &str, profile: &str) -> Instance {
     Instance {name: name.to_owned()}
 }
 
-pub fn attach_bridge(bridge: Bridge, vm: Instance) {
+pub fn attach_bridge(bridge: &Bridge, vm: &Instance) {
     perform(
         &format!("Attach bridge {} to {}", bridge.name, vm.name),
         incus(&["config", "device", "get", &vm.name, &bridge.name, "name"]),
@@ -61,11 +63,23 @@ pub fn attach_bridge(bridge: Bridge, vm: Instance) {
     );
 }
 
-pub fn start_vm(instance: Instance){
+pub fn start_vm(instance: &Instance){
     perform(
         &format!("Start VM {}", instance.name),
         incus(&["exec", &instance.name, "ls"]),
         incus(&["start", &instance.name]),
     );
     wait(incus(&["exec", &instance.name, "ls"]), 1);
+}
+
+pub fn push_file(instance: &Instance, path: &str) {
+    let source_path = format!("/opt/builder/files{}", path);
+    if !Path::new(&source_path).exists() {
+        halt(&format!("Source file '{}' does not exist", source_path));
+    }
+    perform(
+        &format!("Push file {} to {}", path, instance.name),
+        incus(&["file", "get", &instance.name, path]),
+        incus(&["file", "push", &source_path, &format!("{}:{}", instance.name, path)])
+    );
 }
