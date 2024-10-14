@@ -1,6 +1,6 @@
 [package]
 name = "izb"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "A library of helper functions for provisioning ZFS-on-Root VMs with zfsbootmenu using Incus"
 license = "AGPL-3.0"
