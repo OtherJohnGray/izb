@@ -49,16 +49,18 @@ pub fn halt(message: &str) -> ! {
     std::process::exit(1)
 }
 
-pub fn perform( description: &str, mut check: Command, mut operation: Command ){
-    match check.output() {
-        Ok(output) => {
-            if output.status.success() {
-                log(&format!("{} was already done, skipping.", description));
-                return
-            } 
-        },
-        Err(e) => {
-            halt(&format!("Check command '{}' failed: {}", check.cmdline(), e));
+pub fn perform( description: &str, check: Option<Command>, mut operation: Command ){
+    if let Some(mut check_cmd) = check {
+        match check_cmd.output() {
+            Ok(output) => {
+                if output.status.success() {
+                    log(&format!("{} was already done, skipping.", description));
+                    return
+                } 
+            },
+            Err(e) => {
+                halt(&format!("Check command '{}' failed: {}", check_cmd.cmdline(), e));
+            }
         }
     }
 
