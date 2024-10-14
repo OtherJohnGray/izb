@@ -18,7 +18,7 @@ Add this to your `Cargo.toml`:
 ```toml
 [dependencies]
 izb = "0.1.0"
-'''
+```
 
 Then, you can use the library in your Rust code:
 
